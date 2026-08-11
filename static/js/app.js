@@ -1310,91 +1310,40 @@ function createLibraryModal() {
    ========================================================= */
 
 function openLibrary(type) {
+    if (type === "playlist") {
+        closeLibrary();
+        openBackendPlaylist('My Playlist');
+        return;
+    }
+    if (type === "liked") {
+        closeLibrary();
+        openBackendPlaylist('Liked Songs');
+        return;
+    }
 
     createLibraryModal();
 
-    const overlay =
-        document.getElementById(
-            "libraryOverlay"
-        );
-
-    const title =
-        document.getElementById(
-            "libraryModalTitle"
-        );
-
-    const subtitle =
-        document.getElementById(
-            "libraryModalSubtitle"
-        );
+    const overlay = document.getElementById("libraryOverlay");
+    const title = document.getElementById("libraryModalTitle");
+    const subtitle = document.getElementById("libraryModalSubtitle");
 
     if (!overlay) return;
 
     overlay.classList.add("show");
-
-    document.body.classList.add(
-        "library-open"
-    );
+    document.body.classList.add("library-open");
 
     if (!type) {
-
-        title.textContent =
-            "Your Library";
-
-        subtitle.textContent =
-            "Your music collection";
-
+        title.textContent = "Your Library";
+        subtitle.textContent = "Your music collection";
         renderLibraryHome();
-
-        return;
-    }
-
-    if (type === "playlist") {
-
-        title.textContent =
-            "🎵 My Playlist";
-
-        subtitle.textContent =
-            myPlaylist.length +
-            (
-                myPlaylist.length === 1
-                    ? " song"
-                    : " songs"
-            );
-
-        renderPlaylistModal();
-
         return;
     }
 
     if (type === "recent") {
-
-        title.textContent =
-            "🕘 Recently Played";
-
-        subtitle.textContent =
-            recentlyPlayed.length +
-            " recently played";
-
+        title.textContent = "🕘 Recently Played";
+        subtitle.textContent = recentlyPlayed.length + " recently played";
         renderRecentlyPlayedModal();
-
         return;
-    }
-
-    if (type === "liked") {
-
-        title.textContent =
-            "💖 Liked Songs";
-
-        subtitle.textContent =
-            favorites.length +
-            (
-                favorites.length === 1
-                    ? " favorite"
-                    : " favorites"
-            );
-
-        renderFavoritesModal();
     }
 }
 
@@ -1848,41 +1797,6 @@ function createPlaylist() {
    ========================================================= */
 
 function setupLibraryClicks() {
-
-    const items =
-        document.querySelectorAll(
-            ".library-item"
-        );
-
-    items.forEach(item => {
-
-        const text =
-            item.textContent
-                .toLowerCase()
-                .trim();
-
-        item.addEventListener(
-            "click",
-            () => {
-
-                if (
-                    text.includes("my playlist")
-                ) {
-                    openLibrary("playlist");
-
-                } else if (
-                    text.includes("recently played")
-                ) {
-                    openLibrary("recent");
-
-                } else if (
-                    text.includes("liked songs")
-                ) {
-                    openLibrary("liked");
-                }
-            }
-        );
-    });
 }
 
 
