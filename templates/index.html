@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -1772,13 +1772,13 @@
 
 
 <!-- RENAME PLAYLIST MODAL -->
-<div class="auth-modal" id="renamePlaylistModal">
-    <div class="auth-box">
-        <button class="close-modal" onclick="closeRenamePlaylistModal()">×</button>
+<div class="modal-overlay" id="renamePlaylistModal">
+    <div class="modal-content auth-modal">
+        <button class="modal-close" onclick="closeRenamePlaylistModal()">x</button>
         <h2>Rename Playlist</h2>
         <form id="renamePlaylistForm" onsubmit="handleRenamePlaylist(event)">
             <div class="input-group">
-                <input type="text" id="newPlaylistName" required placeholder="New Name">
+                <input type="text" id="newPlaylistName" required placeholder="New Name" class="auth-input">
             </div>
             <button type="submit" class="auth-btn" style="width: auto; padding: 12px 30px;">Save</button>
         </form>
@@ -1786,9 +1786,9 @@
 </div>
 
 <!-- BLEND MODAL -->
-<div class="auth-modal" id="blendModal" style="z-index: 9999 !important;">
-    <div class="auth-box" style="max-width: 450px; max-height: 80vh; display: flex; flex-direction: column;">
-        <button class="close-modal" onclick="closeBlendModal()">×</button>
+<div class="modal-overlay" id="blendModal" style="z-index: 9999 !important;">
+    <div class="modal-content auth-modal" style="max-width: 450px; max-height: 80vh; display: flex; flex-direction: column;">
+        <button class="modal-close" onclick="closeBlendModal()">x</button>
         <h2>Create Blend</h2>
         <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 15px;">Select songs to combine into a new blend.</p>
         
@@ -1799,6 +1799,7 @@
         <button type="button" class="auth-btn" id="generateBlendBtn" onclick="handleGenerateBlend()">Create Blend</button>
     </div>
 </div>
+
 
 <!-- =========================================================
      TOAST

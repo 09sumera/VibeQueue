@@ -2658,10 +2658,10 @@ async function removeSongFromBackendPlaylist(playlistId, songId) {
 
 function openRenamePlaylistModal() {
     if (!currentPlaylistId) return;
-    document.getElementById("renamePlaylistModal").classList.add("active");
+    document.getElementById("renamePlaylistModal").classList.add("show");
 }
 function closeRenamePlaylistModal() {
-    document.getElementById("renamePlaylistModal").classList.remove("active");
+    document.getElementById("renamePlaylistModal").classList.remove("show");
 }
 
 async function handleRenamePlaylist(e) {
@@ -2706,7 +2706,7 @@ async function deleteCurrentPlaylist() {
 
 // 4. BLEND (Song Selection)
 function openBlendModal() {
-    document.getElementById("blendModal").classList.add("active");
+    document.getElementById("blendModal").classList.add("show");
     
     const container = document.getElementById("blendSongsContainer");
     container.innerHTML = "";
@@ -2752,7 +2752,7 @@ function openBlendModal() {
 }
 
 function closeBlendModal() {
-    document.getElementById("blendModal").classList.remove("active");
+    document.getElementById("blendModal").classList.remove("show");
 }
 
 async function handleGenerateBlend() {
