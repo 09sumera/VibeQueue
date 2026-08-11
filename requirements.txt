@@ -3,4 +3,3 @@ gunicorn
 pymongo
 python-dotenv
 requests
-resend

@@ -87,9 +87,34 @@ function getSongData(button) {
    IMAGE PATH
    ========================================================= */
 
+const FALLBACK_IMAGE = "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23ff69b4'/%3E%3Cstop offset='100%25' stop-color='%238a2be2'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='200' height='200' fill='url(%23g)'/%3E%3Ctext x='50%25' y='50%25' font-size='80' text-anchor='middle' dominant-baseline='middle' fill='%23fff'%3E🎵%3C/text%3E%3C/svg%3E";
+
+const SONG_IMAGE_MAPPING = {
+    "Apna Bana Le": "ApnaBanaLe.jpg",
+    "Sapta Sagaradaache Ello": "SaptaSagaradaacheEllo.jpg",
+    "Tum Hi Ho": "TumHiHo.jpg",
+    "Until I Found You": "UntilIFoundYou.jpg",
+    "Saiyaara": "Saiyaara.jpg",
+    "Ishq Wala Love": "IshqWalaLove.jpg",
+    "Naa Ee Sanjege": "NaaEeSanjege.jpg",
+    "Perfect": "Perfect.jpg"
+};
+
+function getSongImageUrl(song) {
+    if (!song) return FALLBACK_IMAGE;
+    let imgName = song.cover || song.image;
+    
+    if (!imgName && song.title) imgName = SONG_IMAGE_MAPPING[song.title];
+    if (!imgName && song.song) imgName = SONG_IMAGE_MAPPING[song.song];
+    
+    if (!imgName) return FALLBACK_IMAGE;
+    if (imgName.startsWith("http") || imgName.startsWith("data:")) return imgName;
+    return "/static/images/" + encodeURIComponent(imgName);
+}
+
 function getImagePath(image) {
-    if (!image) return "";
-    if (image.startsWith("http")) return image;
+    if (!image) return FALLBACK_IMAGE;
+    if (image.startsWith("http") || image.startsWith("data:")) return image;
     return "/static/images/" + encodeURIComponent(image);
 }
 
@@ -871,7 +896,7 @@ function renderFavorites() {
                     >
 
                         <img
-                            src="${getImagePath(song.image)}"
+                            src="${getSongImageUrl(song)}"
                             alt="${escapeHtml(song.song)}"
                             style="
                                 width:50px;
@@ -1530,7 +1555,7 @@ function renderRecentlyPlayedModal() {
                 <div class="library-song">
 
                     <img
-                        src="${getImagePath(song.image)}"
+                        src="${getSongImageUrl(song)}"
                         alt="${escapeHtml(song.song)}"
                     >
 
@@ -1731,7 +1756,7 @@ function renderPlaylistModal() {
                 <div class="library-song">
 
                     <img
-                        src="${getImagePath(song.image)}"
+                        src="${getSongImageUrl(song)}"
                         alt="${escapeHtml(song.song)}"
                     >
 
@@ -1903,7 +1928,7 @@ function renderFavoritesModal() {
                 <div class="library-song">
 
                     <img
-                        src="${getImagePath(song.image)}"
+                        src="${getSongImageUrl(song)}"
                         alt="${escapeHtml(song.song)}"
                     >
 
@@ -2313,6 +2338,10 @@ function resetAuth() {
 async function checkEmail() {
     const email = document.getElementById('authEmail').value;
     if (!email) { showToast('Please enter an email'); return; }
+    
+    const btn = document.querySelector('#authEmailSection .auth-btn');
+    if (btn) { btn.textContent = 'Checking...'; btn.disabled = true; }
+    
     try {
         const res = await fetch('/auth/check-email', {
             method: 'POST',
@@ -2322,33 +2351,53 @@ async function checkEmail() {
         const data = await res.json();
         if (data.success) {
             document.getElementById('authEmailDisplay').textContent = email;
-            document.getElementById('authEmailSection').style.display = 'none';
             if (data.method === 'password') {
+                document.getElementById('authEmailSection').style.display = 'none';
                 document.getElementById('authLoginPasswordSection').style.display = 'block';
+                if (btn) { btn.textContent = 'Continue'; btn.disabled = false; }
             } else {
-                requestOtp(email);
+                // Fetch OTP before hiding email section to prevent empty modal
+                await requestOtp(email, btn);
             }
         } else {
             showToast(data.message || 'Error checking email');
+            if (btn) { btn.textContent = 'Continue'; btn.disabled = false; }
         }
-    } catch (e) { showToast('Network error'); }
+    } catch (e) { 
+        showToast('Network error'); 
+        if (btn) { btn.textContent = 'Continue'; btn.disabled = false; }
+    }
 }
 
-async function requestOtp(email) {
+async function requestOtp(email, btn = null) {
+    if (btn) { btn.textContent = 'Sending Code...'; btn.disabled = true; }
+    
     try {
         const res = await fetch('/auth/request-otp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email })
         });
-        const data = await res.json();
-        if (data.success) {
-            document.getElementById('authOtpSection').style.display = 'block';
-            showToast('OTP sent');
-        } else {
-            showToast(data.message || 'Error sending OTP');
+        
+        let data;
+        try {
+            data = await res.json();
+        } catch (parseErr) {
+            data = { success: false, message: 'Server returned an invalid response.' };
         }
-    } catch (e) { showToast('Network error'); }
+        
+        if (res.ok && data.success) {
+            document.getElementById('authEmailSection').style.display = 'none';
+            document.getElementById('authOtpSection').style.display = 'block';
+            showToast('OTP sent successfully');
+        } else {
+            showToast(data.message || 'Unable to send OTP. Please try again.');
+        }
+    } catch (e) { 
+        showToast('Network error while requesting OTP.'); 
+    } finally {
+        if (btn) { btn.textContent = 'Continue'; btn.disabled = false; }
+    }
 }
 
 async function verifyOtp() {
@@ -2585,12 +2634,44 @@ function renderSidebarPlaylists() {
         if (pCard) {
             pCard.innerText = `${myPlaylistObj.songs.length} songs`;
         }
+        const pIcon = document.querySelector('.sidebar .playlist-card .library-card-icon');
+        if (pIcon) {
+            if (myPlaylistObj.songs.length > 0) {
+                pIcon.innerHTML = `<img src="${getSongImageUrl(myPlaylistObj.songs[0])}" style="width:100%;height:100%;object-fit:cover;" alt="thumb">`;
+                pIcon.style.padding = '0';
+                pIcon.style.background = 'transparent';
+            } else {
+                pIcon.innerHTML = `🎵`;
+            }
+        }
     }
     
     // Update Liked Songs in Sidebar
     const likedSidebarCard = document.querySelector('.sidebar .liked-card small');
     if (likedSidebarCard) {
         likedSidebarCard.innerText = `${appState.likedSongs.length} songs`;
+    }
+    const likedIcon = document.querySelector('.sidebar .liked-card .library-card-icon');
+    if (likedIcon) {
+        if (appState.likedSongs.length > 0) {
+            likedIcon.innerHTML = `<img src="${getSongImageUrl(appState.likedSongs[0])}" style="width:100%;height:100%;object-fit:cover;" alt="thumb">`;
+            likedIcon.style.padding = '0';
+            likedIcon.style.background = 'transparent';
+        } else {
+            likedIcon.innerHTML = `💖`;
+        }
+    }
+    
+    // Update Recently Played in Sidebar
+    const recentIcon = document.querySelector('.sidebar .recent-card .library-card-icon');
+    if (recentIcon) {
+        if (recentlyPlayed && recentlyPlayed.length > 0) {
+            recentIcon.innerHTML = `<img src="${getSongImageUrl(recentlyPlayed[0])}" style="width:100%;height:100%;object-fit:cover;" alt="thumb">`;
+            recentIcon.style.padding = '0';
+            recentIcon.style.background = 'transparent';
+        } else {
+            recentIcon.innerHTML = `🕒`;
+        }
     }
 }
 
@@ -2623,7 +2704,12 @@ async function showPlaylist(playlistId) {
     playlist.songs.forEach((song, idx) => {
         const card = document.createElement("div");
         card.className = "song-card";
+        const imageSrc = getSongImageUrl(song);
         card.innerHTML = `
+            <div class="poster">
+                <img src="${imageSrc}" alt="${escapeHtml(song.title)}">
+                <div class="poster-gradient"></div>
+            </div>
             <div class="song-info">
                 <h3>${escapeHtml(song.title)}</h3>
                 <p>${escapeHtml(song.artist)}</p>

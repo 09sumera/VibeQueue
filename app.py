@@ -2,7 +2,9 @@ import os
 import random
 import datetime
 import requests
-import resend
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from flask import Flask, render_template, request, jsonify, session
 from dotenv import load_dotenv
 
@@ -15,8 +17,6 @@ from bson.objectid import ObjectId
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "fallback-secret-key")
-
-resend.api_key = os.getenv("RESEND_API_KEY", "")
 
 music_queue = MusicQueue()
 
@@ -122,25 +122,61 @@ def request_otp():
         upsert=True
     )
     
-    # In development, print to console
-    print(f"\n======================================")
-    print(f"🔑 OTP for {email}: {otp_code}")
-    print(f"======================================\n")
+    # Only log plaintext OTP in development mode
+    if app.debug or os.getenv("FLASK_ENV") == "development":
+        print(f"\n======================================")
+        print(f"🔑 OTP for {email}: {otp_code}")
+        print(f"======================================\n")
+    else:
+        print(f"OTP generated for {email}")
+        
+    sender_email = os.getenv("EMAIL_USER")
+    sender_password = os.getenv("EMAIL_APP_PASSWORD")
     
-    # Send email via Resend if API key is configured
-    if resend.api_key:
-        try:
-            resend.Emails.send({
-                "from": "VibeQueue <onboarding@resend.dev>",
-                "to": email,
-                "subject": "Your VibeQueue Login Code",
-                "html": f"<p>Your login code is: <strong>{otp_code}</strong></p><p>This code expires in 10 minutes.</p>"
-            })
-            print("Email sent successfully via Resend.")
-        except Exception as e:
-            print(f"Failed to send email: {e}")
-            
-    return jsonify({"success": True, "message": "OTP sent"})
+    missing_vars = []
+    if not sender_email:
+        missing_vars.append("EMAIL_USER")
+    if not sender_password:
+        missing_vars.append("EMAIL_APP_PASSWORD")
+        
+    if missing_vars:
+        error_msg = f"Missing environment variables: {', '.join(missing_vars)}"
+        print(error_msg)
+        return jsonify({"success": False, "message": error_msg}), 500
+
+    # Clean up password just in case user pasted with spaces
+    sender_password = sender_password.replace(" ", "")
+
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = f"VibeQueue <{sender_email}>"
+        msg['To'] = email
+        msg['Subject'] = "Your VibeQueue Verification Code"
+        
+        body = f"""<p>Hi,</p>
+<p>Your VibeQueue verification code is:</p>
+<h2>{otp_code}</h2>
+<p>This code expires in 10 minutes.</p>
+<p>If you did not request this code, please ignore this email.</p>
+<p>Thanks,<br>VibeQueue</p>"""
+        msg.attach(MIMEText(body, 'html'))
+        
+        server = smtplib.SMTP("smtp.gmail.com", 587, timeout=10)
+        server.starttls()
+        server.login(sender_email, sender_password)
+        server.send_message(msg)
+        server.quit()
+        
+        print(f"Email sent successfully to {email} via Gmail SMTP.")
+        return jsonify({"success": True, "message": "OTP sent successfully"})
+    except smtplib.SMTPAuthenticationError:
+        error_msg = "SMTP Authentication Failed. Check that 2-Step Verification is enabled and EMAIL_APP_PASSWORD contains a valid Google App Password."
+        print(error_msg)
+        return jsonify({"success": False, "message": error_msg}), 500
+    except Exception as e:
+        error_msg = f"Failed to send email via Gmail SMTP: {str(e)}"
+        print(error_msg)
+        return jsonify({"success": False, "message": error_msg}), 500
 
 @app.route("/auth/verify-otp", methods=["POST"])
 def verify_otp():
